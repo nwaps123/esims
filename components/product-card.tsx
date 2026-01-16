@@ -23,8 +23,8 @@ interface ProductCardProps {
 
 export function ProductCard({ product }: ProductCardProps) {
   const addItem = useCartStore((state) => state.addItem)
-  const categoryLabel = product.category === "games" ? "Игры" : "Бизнес"
-  const categoryColor = product.category === "games" ? "bg-blue-100 text-blue-800" : "bg-green-100 text-green-800"
+  const categoryLabel = product.category === "game" ? "Игры" : "Бизнес"
+  const categoryColor = product.category === "game" ? "bg-blue-100 text-blue-800" : "bg-green-100 text-green-800"
 
   const handleAddToCart = () => {
     addItem(product, "voucher")

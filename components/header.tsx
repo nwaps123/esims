@@ -1,10 +1,7 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { ShoppingCart, User, LogOut, Settings } from "lucide-react"
-import { useCartStore } from "@/lib/cart-store"
-import { CartSheet } from "@/components/cart-sheet"
+import { User, LogOut, Settings, Menu, X } from "lucide-react"
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
@@ -17,10 +14,9 @@ import {
 } from "@/components/ui/dropdown-menu"
 
 export function Header() {
-  const [cartOpen, setCartOpen] = useState(false)
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const totalItems = useCartStore((state) => state.getTotalItems())
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -48,38 +44,30 @@ export function Header() {
   }
 
   return (
-    <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="border-b bg-white/80 backdrop-blur-md supports-[backdrop-filter]:bg-white/60 sticky top-0 z-50">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-        <Link href="/" className="text-2xl font-bold text-primary">
-          VoucherHub
+        <Link
+          href="/"
+          className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent"
+        >
+          iStreams
         </Link>
 
-        <nav className="hidden md:flex items-center gap-6">
-          <Link href="/" className="text-foreground hover:text-primary transition-colors">
+        <nav className="hidden md:flex items-center gap-8">
+          <Link href="/" className="text-foreground/80 hover:text-primary transition-colors font-medium">
             Главная
           </Link>
-          <Link href="/games" className="text-foreground hover:text-primary transition-colors">
-            Игры
-          </Link>
-          <Link href="/business" className="text-foreground hover:text-primary transition-colors">
-            Бизнес
-          </Link>
-          <Link href="/esim" className="text-foreground hover:text-primary transition-colors">
+          <Link href="/esim" className="text-foreground/80 hover:text-primary transition-colors font-medium">
             eSIM
           </Link>
-          <Link href="/support" className="text-foreground hover:text-primary transition-colors">
+          <Link href="/support" className="text-foreground/80 hover:text-primary transition-colors font-medium">
             Поддержка
           </Link>
         </nav>
 
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" className="relative" onClick={() => setCartOpen(true)}>
-            <ShoppingCart className="h-5 w-5" />
-            {totalItems > 0 && (
-              <Badge className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center p-0 text-xs">
-                {totalItems}
-              </Badge>
-            )}
+          <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+            {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </Button>
 
           {!loading && (
@@ -87,8 +75,8 @@ export function Header() {
               {user ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                      <User className="h-5 w-5" />
+                    <Button variant="ghost" size="icon" className="rounded-full bg-primary/10 hover:bg-primary/20">
+                      <User className="h-5 w-5 text-primary" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
@@ -110,7 +98,7 @@ export function Header() {
                   </DropdownMenuContent>
                 </DropdownMenu>
               ) : (
-                <Button variant="ghost" size="sm" asChild>
+                <Button variant="default" size="sm" asChild className="rounded-full px-6">
                   <Link href="/auth/login">Войти</Link>
                 </Button>
               )}
@@ -119,7 +107,33 @@ export function Header() {
         </div>
       </div>
 
-      <CartSheet open={cartOpen} onOpenChange={setCartOpen} />
+      {mobileMenuOpen && (
+        <div className="md:hidden border-t bg-white/95 backdrop-blur-md">
+          <nav className="container mx-auto px-4 py-4 flex flex-col gap-4">
+            <Link
+              href="/"
+              className="text-foreground/80 hover:text-primary transition-colors font-medium py-2"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Главная
+            </Link>
+            <Link
+              href="/esim"
+              className="text-foreground/80 hover:text-primary transition-colors font-medium py-2"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              eSIM
+            </Link>
+            <Link
+              href="/support"
+              className="text-foreground/80 hover:text-primary transition-colors font-medium py-2"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Поддержка
+            </Link>
+          </nav>
+        </div>
+      )}
     </header>
   )
 }

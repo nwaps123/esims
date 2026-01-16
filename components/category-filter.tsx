@@ -8,8 +8,8 @@ interface CategoryFilterProps {
 export function CategoryFilter({ currentCategory }: CategoryFilterProps) {
   const categories = [
     { value: "all", label: "All Products" },
-    { value: "games", label: "Gaming" },
-    { value: "business", label: "Business Apps" },
+    { value: "game", label: "Gaming" },
+    { value: "business_app", label: "Business Apps" },
   ]
 
   return (

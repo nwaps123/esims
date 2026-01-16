@@ -1,11 +1,11 @@
-export const dynamic = "force-dynamic"
-export const fetchCache = "force-no-store"
 import { apiClient } from "@/lib/api-client"
 import { AdminStats } from "@/components/admin/admin-stats"
 import { RecentOrders } from "@/components/admin/recent-orders"
 import { ProductManagement } from "@/components/admin/product-management"
 import { VoucherCodeManagement } from "@/components/admin/voucher-code-management"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+
+export const dynamic = "force-dynamic"
 
 export default async function AdminPage() {
   let stats = {

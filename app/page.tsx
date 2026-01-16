@@ -3,6 +3,7 @@ import { ProductGrid } from "@/components/product-grid"
 import { Hero } from "@/components/hero"
 import { CategoryFilter } from "@/components/category-filter"
 import { Suspense } from "react"
+import { redirect } from "next/navigation"
 
 interface Product {
   id: string
@@ -20,6 +21,10 @@ export default async function HomePage({
   searchParams: Promise<{ category?: string }>
 }) {
   const params = await searchParams
+
+  if (!params.category) {
+    redirect("/esim")
+  }
 
   let products: Product[] = []
   let apiError = false

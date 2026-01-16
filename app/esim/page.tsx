@@ -1,44 +1,36 @@
 "use client"
-
-import type React from "react"
 import { useState, useEffect } from "react"
 import { ESimGrid } from "@/components/esim-grid"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Search } from "lucide-react"
-import { useParams } from "next/navigation"
+import { Search, X, Globe, Zap } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { useDebounce } from "@/hooks/use-debounce"
 
 export default function ESimPage() {
-  const params = useParams()
-  const countryFromUrl = params?.country as string | undefined
+  const router = useRouter()
   const [bestPriceEsims, setBestPriceEsims] = useState<any[]>([])
   const [allCountryEsims, setAllCountryEsims] = useState<any[]>([])
-  const [countryEsims, setCountryEsims] = useState<any[]>([])
+  const [searchResults, setSearchResults] = useState<any[]>([])
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
-  const [selectedCountry, setSelectedCountry] = useState<string | null>(null)
+  const [searchLoading, setSearchLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [countryCount, setCountryCount] = useState(0)
+
+  const debouncedSearchQuery = useDebounce(searchQuery, 300)
 
   useEffect(() => {
     fetchMainProducts()
   }, [])
 
   useEffect(() => {
-    if (countryFromUrl) {
-      const decoded = decodeURIComponent(countryFromUrl)
-      console.log("🌍 Country from URL:", decoded)
-      setSelectedCountry(decoded)
+    if (debouncedSearchQuery.trim()) {
+      searchCountries(debouncedSearchQuery)
     } else {
-      setSelectedCountry(null)
+      setSearchResults([])
     }
-  }, [countryFromUrl])
-
-  useEffect(() => {
-    if (selectedCountry) {
-      fetchCountryProducts(selectedCountry)
-    }
-  }, [selectedCountry])
+  }, [debouncedSearchQuery])
 
   const fetchMainProducts = async () => {
     setLoading(true)
@@ -63,7 +55,6 @@ export default function ESimPage() {
         amount_gb: item.amount_gb,
         amount_days: item.day,
         price: item.price,
-        old_price: item.old_price ? item.old_price : undefined,
         desktop_img: item.desktop_img,
         mobile_img: item.mobile_img,
         img_text: item.img_text,
@@ -84,7 +75,6 @@ export default function ESimPage() {
       setBestPriceEsims(transformedBestPrices)
       setAllCountryEsims(transformedPrices)
       setCountryCount(data.country_count || 0)
-      setCountryEsims([])
     } catch (err) {
       setError(err instanceof Error ? err.message : "Не удалось загрузить eSIM")
       console.error("Error fetching main eSIMs:", err)
@@ -93,233 +83,182 @@ export default function ESimPage() {
     }
   }
 
-const fetchCountryProducts = async (country: string) => {
-  setLoading(true)
-  setError(null)
+  const searchCountries = async (query: string) => {
+    setSearchLoading(true)
 
-  try {
-    console.log(`🔍 Fetching products for country: ${country}`)
-    
-    const response = await fetch(`/api/esim/country-products?country=${encodeURIComponent(country)}`, {
-      cache: "no-store",
-    })
-
-    console.log('📡 Country products response status:', response.status, response.statusText)
-    
-    if (!response.ok) {
-      const errorText = await response.text()
-      console.error('❌ Error response:', errorText)
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-    }
-
-    const data = await response.json()
-    console.log('📦 Raw country products data:', data)
-    console.log('📦 Type:', typeof data)
-    console.log('📦 Is array?', Array.isArray(data))
-    
-    // Проверяем, что это массив (как возвращает наш API route)
-    if (Array.isArray(data)) {
-      console.log(`✅ Received ${data.length} products as array`)
-      
-      if (data.length === 0) {
-        console.warn('⚠️ API returned empty array')
-        setBestPriceEsims([])
-        setAllCountryEsims([])
-        return
-      }
-      
-      // Преобразуем данные в нужный формат
-      const transformedEsims = data.map((item: any, index: number) => {
-        console.log(`📄 Item ${index}:`, item)
-        
-        return {
-          // Используем правильные поля из API response
-          id: item.id || item.name || `esim-${country}-${index}`,
-          name: item.name || item.group || `eSIM ${country}`,
-          country_name: item.country_name || item.country || country,
-          country_flag_logo: item.country_flag_logo || item.img || item.icon || 'https://via.placeholder.com/150',
-          amount_gb:
-            typeof item.amount_gb === "number"
-              ? item.amount_gb
-              : item.data ?? 0,
-          amount_days: item.amount_days || item.day || 7,
-          price: typeof item.price === 'number' ? item.price : 0,
-          old_price: item.old_price || undefined,
-          // Дополнительные поля, если есть
-          ...(item.category && { category: item.category }),
-          ...(item.image_url && { image_url: item.image_url }),
-        }
+    try {
+      const response = await fetch(`/api/esim/search?search_field=${encodeURIComponent(query)}`, {
+        cache: "no-store",
       })
-      
-      console.log(`✅ Transformed ${transformedEsims.length} products`)
-      console.log('✅ First transformed item:', transformedEsims[0])
-      
-      setCountryEsims(transformedEsims)
-    } 
-    // Если API возвращает объект (старый формат)
-    else if (data && typeof data === 'object') {
-      console.log('📦 Object keys:', Object.keys(data))
-      
-      // Проверяем наличие best-prices
-      if (data["best-prices"] && Array.isArray(data["best-prices"])) {
-        console.log(`✅ Found ${data["best-prices"].length} best-prices`)
-        
-        const transformedEsims = data["best-prices"].map((item: any, index: number) => ({
-          id: item.name || `esim-${country}-${index}`,
-          name: item.name || `eSIM ${country}`,
-          country_name: item.country_ru || item.country || country,
-          country_flag_logo: item.img || 'https://via.placeholder.com/150',
-          amount_gb:
-            typeof item.amount_gb === "number"
-              ? item.amount_gb
-              : item.data ?? 0,
-          amount_days: item.day || 7,
-          price: item.price || 0,
-          old_price: item.old_price || undefined,
-        }))
-        
-        setBestPriceEsims(transformedEsims)
-        setAllCountryEsims([])
-      } else {
-        console.warn('⚠️ No best-prices array found in response')
-        throw new Error('Invalid response format: missing best-prices array')
-      }
-    } else {
-      console.warn('⚠️ Unexpected response format:', data)
-      throw new Error('Unexpected response format from API')
-    }
-  } catch (err) {
-    console.error('❌ Error fetching country eSIMs:', err)
-    setError(err instanceof Error ? err.message : "Не удалось загрузить eSIM")
-    setCountryEsims(testData)
-  } finally {
-    setLoading(false)
-  }
-}
 
-  const handleSearch = () => {
-    if (searchQuery.trim()) {
-      setSelectedCountry(searchQuery.trim())
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`)
+      }
+
+      const data = await response.json()
+
+      if (Array.isArray(data)) {
+        const transformed = data.map((item: any, index: number) => ({
+          id: `search-${item.country}-${index}`,
+          name: item.country,
+          country_name: item.country_ru || item.country,
+          country_flag_logo: item.img,
+          amount_gb: item.amount_gb,
+          amount_days: item.day,
+          price: item.price,
+        }))
+        setSearchResults(transformed)
+      } else {
+        setSearchResults([])
+      }
+    } catch (err) {
+      console.error("Error searching eSIMs:", err)
+      setSearchResults([])
+    } finally {
+      setSearchLoading(false)
     }
   }
 
   const handleClearSearch = () => {
-    setSelectedCountry(null)
     setSearchQuery("")
-    fetchMainProducts()
-  }
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      handleSearch()
-    }
+    setSearchResults([])
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Hero Section */}
-      <section className="py-12 bg-gradient-to-br from-cyan-50 via-blue-50 to-background">
-        <div className="container mx-auto px-4">
+    <div className="min-h-screen bg-gradient-to-b from-background via-background to-primary/5">
+      <section className="py-16 md:py-20 relative overflow-hidden">
+        {/* Decorative background elements */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute -top-40 -right-40 w-80 h-80 bg-primary/10 rounded-full blur-3xl" />
+          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-accent/10 rounded-full blur-3xl" />
+        </div>
+
+        <div className="container mx-auto px-4 relative">
           <div className="max-w-3xl">
-            <h1 className="text-4xl md:text-5xl font-bold mb-4 text-balance">eSIM для путешествий</h1>
+            <div className="flex items-center gap-2 mb-4">
+              <div className="p-2 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20">
+                <Globe className="h-6 w-6 text-primary" />
+              </div>
+              <span className="text-sm font-medium text-primary">Мобильный интернет по всему миру</span>
+            </div>
+
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-4 text-balance bg-gradient-to-r from-foreground via-foreground to-foreground/70 bg-clip-text">
+              eSIM для путешествий
+            </h1>
             <p className="text-lg text-muted-foreground text-pretty mb-2">
-              Оставайтесь на связи по всему миру с нашими доступными тарифами eSIM. Мгновенная активация, физическая
-              SIM-карта не нужна.
+              Оставайтесь на связи по всему миру с нашими доступными тарифами eSIM.
+              <span className="text-primary font-medium"> Мгновенная активация</span>, физическая SIM-карта не нужна.
             </p>
             {countryCount > 0 && (
-              <p className="text-sm text-muted-foreground mb-8">Доступно в {countryCount} странах мира</p>
+              <div className="flex items-center gap-2 mb-8">
+                <Zap className="h-4 w-4 text-accent" />
+                <p className="text-sm text-muted-foreground">
+                  Доступно в <span className="font-bold text-foreground">{countryCount}</span> странах мира
+                </p>
+              </div>
             )}
 
-            <div className="flex gap-2 max-w-md">
-              <Input
-                placeholder="Поиск по названию страны..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={handleKeyPress}
-                className="flex-1"
-              />
-              {selectedCountry ? (
-                <Button onClick={handleClearSearch} variant="outline">
-                  Очистить
-                </Button>
-              ) : (
-                <Button onClick={handleSearch} size="default">
-                  <Search className="h-4 w-4 mr-2" />
-                  Поиск
-                </Button>
-              )}
+            <div className="flex gap-2 max-w-md relative">
+              <div className="relative flex-1">
+                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <Input
+                  placeholder="Поиск по названию страны..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-12 pr-12 h-12 text-base rounded-xl border-2 border-primary/20 focus:border-primary/50 bg-white/80 backdrop-blur-sm shadow-lg shadow-primary/5"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={handleClearSearch}
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground p-1 rounded-full hover:bg-muted transition-colors"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
       </section>
 
       {/* eSIM Grid Section */}
-      <section className="py-12">
+      <section className="py-8 md:py-12">
         <div className="container mx-auto px-4">
           {loading ? (
-            <div className="text-center py-12">
-              <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent motion-reduce:animate-[spin_1.5s_linear_infinite]" />
+            <div className="text-center py-16">
+              <div className="inline-block h-10 w-10 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent motion-reduce:animate-[spin_1.5s_linear_infinite]" />
               <p className="mt-4 text-muted-foreground">Загрузка тарифов eSIM...</p>
             </div>
           ) : error ? (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-              <h3 className="text-lg font-semibold text-red-900 mb-2">Не удалось загрузить eSIM</h3>
-              <p className="text-red-700 mb-4">{error}</p>
-              <p className="text-sm text-red-600">
-                Не удалось получить данные из: <strong>/api/esim/main-products</strong>
-              </p>
-              <Button onClick={fetchMainProducts} variant="outline" className="mt-4 bg-transparent">
+            <div className="bg-destructive/10 border border-destructive/20 rounded-2xl p-8 text-center max-w-md mx-auto">
+              <h3 className="text-lg font-semibold text-destructive mb-2">Не удалось загрузить eSIM</h3>
+              <p className="text-destructive/80 mb-4">{error}</p>
+              <Button
+                onClick={fetchMainProducts}
+                variant="outline"
+                className="mt-4 bg-transparent border-destructive/30 hover:bg-destructive/10"
+              >
                 Попробовать снова
               </Button>
             </div>
           ) : (
             <>
-              {selectedCountry && countryEsims.length > 0 && (
+              {/* Search Results */}
+              {searchQuery && (
                 <div className="mb-12">
                   <div className="mb-6">
                     <h2 className="text-2xl font-bold">
-                      Тарифы eSIM для {selectedCountry}
+                      Результаты поиска: <span className="text-primary">"{searchQuery}"</span>
+                      {searchLoading && (
+                        <span className="ml-2 text-sm font-normal text-muted-foreground">Поиск...</span>
+                      )}
                     </h2>
                   </div>
-                  <ESimGrid esims={countryEsims} />
-                </div>
-              )}
-
-              {!selectedCountry && bestPriceEsims.length > 0 && (
-                <div className="mb-12">
-                  <div className="mb-6">
-                    <h2 className="text-2xl font-bold">Выгодные предложения</h2>
-                    <p className="text-muted-foreground mt-1">
-                      Специальные предложения и лучшие цены для популярных направлений
-                    </p>
-                  </div>
-                  <ESimGrid esims={bestPriceEsims} showAsCountryList />
-                </div>
-              )}
-
-
-              {!selectedCountry && allCountryEsims.length > 0 && (
-                <div>
-                  <div className="mb-6">
-                    <h2 className="text-2xl font-bold">Все доступные страны</h2>
-                    <p className="text-muted-foreground mt-1">Выберите тарифы eSIM по стране</p>
-                  </div>
-                  <ESimGrid esims={allCountryEsims} showAsCountryList />
-                </div>
-              )}
-
-              {/* Empty state */}
-              {selectedCountry && countryEsims.length === 0 && !loading && (
-                <div className="text-center py-12">
-                  <p className="text-muted-foreground">
-                    Тарифы eSIM{selectedCountry ? ` для ${selectedCountry}` : ""} в данный момент недоступны.
-                  </p>
-                  {selectedCountry && (
-                    <Button variant="outline" className="mt-4 bg-transparent" onClick={handleClearSearch}>
-                      Показать все страны
-                    </Button>
+                  {searchResults.length > 0 ? (
+                    <ESimGrid esims={searchResults} showAsCountryList showPriceFrom />
+                  ) : (
+                    !searchLoading && (
+                      <p className="text-muted-foreground">Ничего не найдено по запросу "{searchQuery}"</p>
+                    )
                   )}
                 </div>
+              )}
+
+              {/* Main content when not searching */}
+              {!searchQuery && (
+                <>
+                  {bestPriceEsims.length > 0 && (
+                    <div className="mb-12">
+                      <div className="mb-6 flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-gradient-to-br from-primary/20 to-accent/20">
+                          <Zap className="h-5 w-5 text-primary" />
+                        </div>
+                        <div>
+                          <h2 className="text-2xl font-bold">Выгодные предложения</h2>
+                          <p className="text-muted-foreground text-sm">
+                            Специальные предложения для популярных направлений
+                          </p>
+                        </div>
+                      </div>
+                      <ESimGrid esims={bestPriceEsims} showAsCountryList showPriceFrom />
+                    </div>
+                  )}
+
+                  {allCountryEsims.length > 0 && (
+                    <div>
+                      <div className="mb-6 flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-gradient-to-br from-secondary to-muted">
+                          <Globe className="h-5 w-5 text-foreground/70" />
+                        </div>
+                        <div>
+                          <h2 className="text-2xl font-bold">Все доступные страны</h2>
+                          <p className="text-muted-foreground text-sm">Выберите страну для просмотра тарифов</p>
+                        </div>
+                      </div>
+                      <ESimGrid esims={allCountryEsims} showAsCountryList showPriceFrom compact />
+                    </div>
+                  )}
+                </>
               )}
             </>
           )}

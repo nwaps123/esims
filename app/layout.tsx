@@ -1,5 +1,3 @@
-export const dynamic = "force-dynamic";
-export const fetchCache = "force-no-store";
 import type React from "react"
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
@@ -11,13 +9,13 @@ import { Suspense } from "react"
 import "./globals.css"
 
 const inter = Inter({
-  subsets: ["latin"],
+  subsets: ["latin", "cyrillic"],
   variable: "--font-sans",
 })
 
 export const metadata: Metadata = {
-  title: "VoucherHub - Digital Vouchers, Game Keys & eSIM Plans",
-  description: "Get instant access to game keys, software licenses, and travel eSIM data plans delivered to your email",
+  title: "iStreams - eSIM для путешествий по всему миру",
+  description: "Мгновенная активация eSIM для путешествий. Интернет в любой точке мира без роуминга.",
   generator: "v0.app",
 }
 
@@ -27,9 +25,9 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
+    <html lang="ru">
       <body className={`font-sans ${inter.variable}`}>
-        <Suspense fallback={<div>Loading...</div>}>
+        <Suspense fallback={<div>Загрузка...</div>}>
           <Header />
           {children}
           <Footer />
